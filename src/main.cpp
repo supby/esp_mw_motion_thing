@@ -6,9 +6,12 @@
 #define DEVICE_NAME "esp-motion-thing"
 #define EEPROM_SIZE 200
 
+#define MONITOR_SERIAL Serial
+
+#define RADAR_SERIAL Serial1
 #define LD2410_OUT_PIN 16
-// #define LD2410_RX_PIN 18
-// #define LD2410_TX_PIN 16
+#define LD2410_RX_PIN 18
+#define LD2410_TX_PIN 33
 
 // webthings
 #include <WebThingAdapter.h>
@@ -22,10 +25,33 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
+// LD2410
+#include <ld2410.h>
+
 WebThingAdapter *adapter;
 const char *motionSensorTypes[] = {"MotionSensor", nullptr};
 ThingDevice motionSensor("motion", DEVICE_NAME, motionSensorTypes);
 ThingProperty motionProp("Motion", "Motion", BOOLEAN, "MotionProperty");
+ld2410 radar;
+
+void setupRadar() {
+  RADAR_SERIAL.begin(256000, SERIAL_8N1, LD2410_RX_PIN, LD2410_TX_PIN);
+
+  if(radar.begin(RADAR_SERIAL))
+  {
+    MONITOR_SERIAL.println(F("OK"));
+    MONITOR_SERIAL.print(F("LD2410 firmware version: "));
+    MONITOR_SERIAL.print(radar.firmware_major_version);
+    MONITOR_SERIAL.print('.');
+    MONITOR_SERIAL.print(radar.firmware_minor_version);
+    MONITOR_SERIAL.print('.');
+    MONITOR_SERIAL.println(radar.firmware_bugfix_version, HEX);
+  }
+  else
+  {
+    MONITOR_SERIAL.println(F("not connected"));
+  }
+}
 
 void write_flash(const char* toStore, int startAddr) {
   int i = 0;
@@ -177,7 +203,7 @@ void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(LD2410_OUT_PIN, INPUT);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   if (!EEPROM.begin(EEPROM_SIZE)) { 
     Serial.println("Failed to init EEPROM");
