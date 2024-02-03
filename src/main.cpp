@@ -12,6 +12,7 @@
 #define LD2410_OUT_PIN 16
 #define LD2410_RX_PIN 18
 #define LD2410_TX_PIN 33
+#define REPORT_INTERVAL 1000
 
 // webthings
 #include <WebThingAdapter.h>
@@ -32,7 +33,14 @@ WebThingAdapter *adapter;
 const char *motionSensorTypes[] = {"MotionSensor", nullptr};
 ThingDevice motionSensor("motion", DEVICE_NAME, motionSensorTypes);
 ThingProperty motionProp("Motion", "Motion", BOOLEAN, "MotionProperty");
+ThingProperty stationaryTargetDistanceProp("StationaryTargetDistance", "StationaryTargetDistance", NUMBER, "CustomProperty");
+ThingProperty stationaryTargetEnergyProp("StationaryTargetEnergy", "StationaryTargetEnergy", NUMBER, "CustomProperty");
+ThingProperty movingTargetDistanceProp("MovingTargetDistance", "MovingTargetDistance", NUMBER, "CustomProperty");
+ThingProperty movingTargetEnergyProp("MovingTargetEnergy", "MovingTargetEnergy", NUMBER, "CustomProperty");
+
+
 ld2410 radar;
+uint32_t lastReading = 0;
 
 void setupRadar() {
   RADAR_SERIAL.begin(256000, SERIAL_8N1, LD2410_RX_PIN, LD2410_TX_PIN);
@@ -131,18 +139,6 @@ void setupWebThing(String deviceName) {
   adapter->begin();
 }
 
-void checkProps() {
-  uint out = digitalRead(LD2410_OUT_PIN);
-
-  ThingPropertyValue newValue;
-  newValue.boolean = out;
-  
-  motionProp.setValue(newValue);
-
-  adapter->update();
-  
-}
-
 void setupOTA(const char* deviceName) {
   // Port defaults to 3232
   // ArduinoOTA.setPort(3232);
@@ -187,6 +183,71 @@ void setupOTA(const char* deviceName) {
   ArduinoOTA.begin();
 }
 
+void readRadar() {
+  radar.read();
+  if(radar.isConnected() && millis() - lastReading > REPORT_INTERVAL)
+  {
+
+    uint out = digitalRead(LD2410_OUT_PIN);
+
+    ThingPropertyValue newValue;
+    newValue.boolean = out;    
+    motionProp.setValue(newValue);
+
+    lastReading = millis();
+    if(radar.presenceDetected())
+    {
+      if(radar.stationaryTargetDetected())
+      {
+
+        uint16_t stationaryDistance = radar.stationaryTargetDistance();
+
+        ThingPropertyValue stationaryDistanceValue;
+        stationaryDistanceValue.number = stationaryDistance;    
+        stationaryTargetDistanceProp.setValue(stationaryDistanceValue);
+
+        uint8_t statinaryEnergy = radar.stationaryTargetEnergy();
+
+        ThingPropertyValue stationaryEnergyValue;
+        stationaryEnergyValue.number = statinaryEnergy;    
+        stationaryTargetEnergyProp.setValue(stationaryEnergyValue);
+
+        Serial.print(F("Stationary target: "));
+        Serial.print(stationaryDistance);
+        Serial.print(F("cm energy:"));
+        Serial.print(statinaryEnergy);
+        Serial.print(' ');
+      }
+      if(radar.movingTargetDetected())
+      {
+        uint16_t movingDistance = radar.movingTargetDistance();
+
+        ThingPropertyValue movingDistanceValue;
+        movingDistanceValue.number = movingDistance;    
+        movingTargetDistanceProp.setValue(movingDistanceValue);
+
+        uint8_t movingEnergy = radar.movingTargetEnergy();
+
+        ThingPropertyValue movingEnergyValue;
+        movingEnergyValue.number = movingEnergy;    
+        movingTargetEnergyProp.setValue(movingEnergyValue);
+
+        Serial.print(F("Moving target: "));
+        Serial.print(movingDistance);
+        Serial.print(F("cm energy:"));
+        Serial.print(movingEnergy);
+      }
+      Serial.println();
+    }
+    else
+    {
+      Serial.println(F("No target"));
+    }
+  }
+
+  adapter->update();
+}
+
 void setup() {
   setCpuFrequencyMhz(80);
 
@@ -218,6 +279,8 @@ void setup() {
 
   setupOTA(deviceName.c_str());
 
+  setupRadar();
+
   Serial.println("Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -225,6 +288,6 @@ void setup() {
 
 void loop() {
   ArduinoOTA.handle();
-  checkProps();
+  readRadar();
 }
 
