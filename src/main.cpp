@@ -10,9 +10,9 @@
 
 #define RADAR_SERIAL Serial1
 #define LD2410_OUT_PIN 16
-#define LD2410_RX_PIN 18
-#define LD2410_TX_PIN 33
-#define REPORT_INTERVAL 1000
+#define LD2410_RX_PIN 33
+#define LD2410_TX_PIN 18
+#define REPORT_INTERVAL_MS 100
 
 // webthings
 #include <WebThingAdapter.h>
@@ -130,9 +130,26 @@ void setupWebThing(String deviceName) {
   motionProp.readOnly = true;
   motionProp.title = "Motion";
 
+  stationaryTargetDistanceProp.readOnly = true;
+  stationaryTargetDistanceProp.title = "Stat distance cm";
+
+  stationaryTargetEnergyProp.readOnly = true;
+  stationaryTargetEnergyProp.title = "Stat energy";
+
+  movingTargetDistanceProp.readOnly = true;
+  movingTargetDistanceProp.title = "Moving distance cm";
+
+  movingTargetEnergyProp.readOnly = true;
+  movingTargetEnergyProp.title = "Moving energy";
+  
+
   motionSensor.id = deviceName;
   motionSensor.title = deviceName;
   motionSensor.addProperty(&motionProp);
+  motionSensor.addProperty(&stationaryTargetDistanceProp);
+  motionSensor.addProperty(&stationaryTargetEnergyProp);
+  motionSensor.addProperty(&movingTargetDistanceProp);
+  motionSensor.addProperty(&movingTargetEnergyProp);
 
   adapter = new WebThingAdapter(deviceName, WiFi.localIP(), 80, true);
   adapter->addDevice(&motionSensor);
@@ -185,7 +202,7 @@ void setupOTA(const char* deviceName) {
 
 void readRadar() {
   radar.read();
-  if(radar.isConnected() && millis() - lastReading > REPORT_INTERVAL)
+  if(radar.isConnected() && millis() - lastReading > REPORT_INTERVAL_MS)
   {
 
     uint out = digitalRead(LD2410_OUT_PIN);
