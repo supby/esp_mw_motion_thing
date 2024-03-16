@@ -204,7 +204,6 @@ void readRadar() {
   radar.read();
   if(radar.isConnected() && millis() - lastReading > REPORT_INTERVAL_MS)
   {
-
     uint out = digitalRead(LD2410_OUT_PIN);
 
     ThingPropertyValue newValue;
