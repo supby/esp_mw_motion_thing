@@ -14,6 +14,9 @@
 #define LD2410_TX_PIN 18
 #define REPORT_INTERVAL_MS 100
 
+#define LARGE_JSON_BUFFERS 1
+#define ARDUINOJSON_USE_LONG_LONG 1
+
 // webthings
 #include <WebThingAdapter.h>
 #include <Thing.h>
@@ -141,7 +144,6 @@ void setupWebThing(String deviceName) {
 
   movingTargetEnergyProp.readOnly = true;
   movingTargetEnergyProp.title = "Moving energy";
-  
 
   motionSensor.id = deviceName;
   motionSensor.title = deviceName;
